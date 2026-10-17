@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Engineer (Support &amp; Operations) - Careers</title>
+  <script src="common.js"></script>
+  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto}</style>
+</head>
+<body>
+  <h1>Engineer (Support &amp; Operations)</h1>
+  <p id="meta">Location: Pune, India · Job ID: <span id="jobid"></span></p>
+  <h2>About the role</h2>
+  <p>We are looking for an engineer to support SAP BTP operations. You will work with
+     CAP, Fiori and Python tooling across a global team.</p>
+  <h2>Requirements</h2>
+  <ul>
+    <li>5+ years of experience</li>
+    <li>Hands-on SAP BTP</li>
+  </ul>
+  <div id="apply-slot"></div>
+  <script>
+    document.getElementById("jobid").textContent = new URLSearchParams(location.search).get("id") || "180703";
+    // The Apply button is injected by script after a delay, like a page filled from an API.
+    setTimeout(function () {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Apply";
+      btn.addEventListener("click", function () {
+        if (SF.flag("login") && !SF.hasSession()) { SF.go("login.html"); return; }
+        if (SF.flag("popup")) { window.open("apply_1.html" + SF.q, "_blank"); return; }
+        SF.go("apply_1.html");
+      });
+      document.getElementById("apply-slot").appendChild(btn);
+    }, 300);
+  </script>
+</body>
+</html>

@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Build Loop</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6a65;
+    --border: #e2e0d8; --accent: #2f5d50; --accent-soft: #e4eee9;
+    --alt: #8a4b2a; --alt-soft: #f5e8df; --code-bg: #f0eee8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #1f1f1c; --text: #ecebe6; --muted: #a09f98;
+      --border: #34332e; --accent: #8cc4b0; --accent-soft: #23332d;
+      --alt: #e0a37f; --alt-soft: #3a2a20; --code-bg: #2a2925;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --surface: #1f1f1c; --text: #ecebe6; --muted: #a09f98;
+    --border: #34332e; --accent: #8cc4b0; --accent-soft: #23332d;
+    --alt: #e0a37f; --alt-soft: #3a2a20; --code-bg: #2a2925;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 820px; margin: 0 auto; padding: 48px 16px 80px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.25rem; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  h3 { font-size: 1rem; margin: 24px 0 8px; }
+  p, li { color: var(--text); }
+  .lede { color: var(--muted); font-size: 1.1rem; margin: 0 0 24px; }
+  .meta { color: var(--muted); font-size: .875rem; }
+  code {
+    font: .875em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--code-bg); padding: 2px 5px; border-radius: 4px;
+    word-break: break-all;
+  }
+  pre {
+    background: var(--code-bg); padding: 16px; border-radius: 8px;
+    overflow-x: auto; font: .85rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  .callout {
+    background: var(--accent-soft); border-left: 4px solid var(--accent);
+    padding: 16px 20px; border-radius: 6px; margin: 24px 0;
+  }
+  .callout strong { color: var(--accent); }
+  .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 640px) { .groups { grid-template-columns: 1fr; } }
+  .group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; border-top: 4px solid var(--accent);
+  }
+  .group.alt { border-top-color: var(--alt); }
+  .group h3 { margin-top: 0; }
+  .tag {
+    display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .03em;
+    padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent);
+  }
+  .group.alt .tag { background: var(--alt-soft); color: var(--alt); }
+  .group ul { padding-left: 18px; margin: 10px 0 0; }
+  .group li { margin: 6px 0; font-size: .9rem; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .9rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .table-wrap { overflow-x: auto; }
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin: 8px 0; }
+  .muted { color: var(--muted); }
+</style>
+<style>
+  .log { font-size: .8rem; }
+  .pass { color: var(--accent); font-weight: 600; }
+  .fail { color: var(--alt); font-weight: 600; }
+  .group.ats { border-top-color: var(--muted); }
+  .group.ats .tag { background: var(--code-bg); color: var(--text); }
+  .topbar {
+    position: sticky; top: 0; z-index: 10; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 820px; margin: 0 auto; padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .topbar-title { font-weight: 600; font-size: .95rem; }
+  .lang-switch {
+    display: inline-flex; border: 1px solid var(--border); border-radius: 99px;
+    padding: 3px; background: var(--surface);
+  }
+  .lang-switch button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .85rem;
+    padding: 5px 14px; border-radius: 99px; cursor: pointer;
+  }
+  .lang-switch button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+  .lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [data-lang-block] { display: none; }
+  html[data-lang="en"] [data-lang-block="en"],
+  html[data-lang="hinglish"] [data-lang-block="hinglish"] { display: block; }
+  main { padding-top: 32px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="topbar-title">Code Build Loop</span>
+    <div class="lang-switch" role="group" aria-label="Language / Bhasha">
+      <button type="button" data-set-lang="en" aria-pressed="true">English</button>
+      <button type="button" data-set-lang="hinglish" aria-pressed="false">Hinglish</button>
+    </div>
+  </div>
+</header>
+<main>
+
+<div data-lang-block="en" lang="en">
+
+  <p class="meta">Plan document · v1 · 14 Oct 2026 · companion to <a href="job-form-agent-intent.html">job-form-agent-intent.html</a></p>
+  <h1>Code Build Loop</h1>
+  <p class="lede">How the builder agent writes the form-filler code for HCLTech and Capgemini, one step at a time, and keeps fixing it until it works. As soon as the browser opens the job link, building starts right away: there is no "do we already have code for this?" check for now. Then it looks at the page, writes the code for one action, runs it in the browser, and fixes only the broken lines if it fails, step after step. It records every action in a log and uses dummy candidate data. It also uses as few tokens as it can so each round stays fast on a local Qwen3-Coder-30B.</p>
+
+  <div class="callout">
+    <strong>Main rule:</strong> the loop only stops when every check passes on every sample URL, or when it hits a hard limit and hands over to me with the log.
+    "It looks right" doesn't count as done. Done means the tests passed.
+  </div>
+  <div class="callout">
+    <strong>For now:</strong> link in → browser opens the job post → the agent starts building the filler straight away.
+    It does <em>not</em> look for existing code first. The system that checks for and reuses saved fillers comes later (see section 8).
+  </div>
+
+  <h2>1. What this doc covers</h2>
+  <ul>
+    <li><strong>The build loop:</strong> how the code is built one step at a time (click Apply, then name, email, phone…), each step tested as soon as it's written, with only the broken part replaced when something fails.</li>
+    <li><strong>The first two targets:</strong> HCLTech <code>careers.hcltech.com/job/…/180703-en_US</code> and Capgemini <code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code>.</li>
+    <li><strong>The action log:</strong> a note of every step the agent takes while building.</li>
+    <li><strong>Dummy data:</strong> a fake candidate profile used for all test fills.</li>
+    <li><strong>The harness:</strong> the agent works with the same observe → edit → run → read-result tool loop that a coding agent like Claude Code uses.</li>
+    <li><strong>Token saving:</strong> the methods that keep prompts small so code is created quickly.</li>
+  </ul>
+  <p class="muted" style="font-size:.9rem">This is a plan only. No code has been written or changed yet.</p>
+
+  <h2>2. The harness: same pattern as a coding agent</h2>
+  <p>The builder agent doesn't get one giant prompt and return a finished file. It works the way a coding agent does: a short loop of small tool calls, where each result decides the next step. Qwen is the model inside the loop. The harness around it is plain code.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tool</th><th>What it does</th><th>Like Claude Code's</th></tr></thead>
+    <tbody>
+      <tr><td><code>observe(url)</code></td><td>Opens the page in Playwright and returns a trimmed view: form fields, labels, buttons (accessibility tree) and the network calls made. Cached per URL.</td><td>Read / WebFetch</td></tr>
+      <tr><td><code>read_file(path, lines?)</code></td><td>Reads part of an existing file, such as the worked example, the interface, or the current draft.</td><td>Read</td></tr>
+      <tr><td><code>add_step(name, code)</code></td><td>Adds one new step to the end of <code>steps.py</code>. It can't overwrite a step that already passed.</td><td>Write</td></tr>
+      <tr><td><code>edit_file(path, old, new)</code></td><td>Replaces one exact piece of text inside the failing step. Used for every fix.</td><td>Edit</td></tr>
+      <tr><td><code>run_step(name)</code></td><td>Runs only the newest step in the live browser, from where the page is now, then runs that step's check (value read back, or the next page appears).</td><td>Bash (one quick run)</td></tr>
+      <tr><td><code>run_checks(target)</code></td><td>The full test. Runs, in order: syntax/lint → sandbox rules → all steps from the job link on every sample job (never submits). Returns only the first failure.</td><td>Bash (tests)</td></tr>
+      <tr><td><code>note(text)</code></td><td>Adds a line to the action log: why it's doing the next step.</td><td>Todo list / notes</td></tr>
+      <tr><td><code>ask_human(question)</code></td><td>Stops and asks me. Used for login, CAPTCHA, or when the limit is hit.</td><td>AskUserQuestion</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>Qwen can only reach the outside world through these tools. It can't run arbitrary shell commands, submit forms, or read credentials.</li>
+    <li>Paths are limited to the one filler folder being built (for example <code>fillers/hcltech/</code>), plus read-only access to the shared core and the worked example.</li>
+    <li>Tool results are short by design (see section 6). Each one carries just enough for the next decision.</li>
+  </ul>
+
+  <h2>3. The build loop: one step at a time</h2>
+  <p>The agent builds the filler the way a person learns a new form: look at the page, do one thing, check that it worked, then move on to the next thing. The code grows one small step at a time, and each step is run in the live browser the moment it's written.</p>
+<pre>
+ job link ─▶ open in browser (no check for existing code yet)
+                 │
+                 ▼
+   ┌─▶ look at the page (observe) ─▶ what kind of page is it?
+   │        │
+   │        ├─ job description + Apply button ──▶ next action = click Apply
+   │        └─ form page ──────────────────────▶ next action = next empty field
+   │                                              (or the Next / Continue button)
+   │        ▼
+   │   Qwen writes code for that ONE action and adds it to steps.py
+   │        │
+   │        ▼
+   │   run_step: run only that action in the live browser, then check it
+   │        │
+   │   worked? ── no ──▶ error back to Qwen ─▶ replace only the broken lines ─▶ run_step again
+   │        │ yes
+   └────────┘   repeat until the final review page (never press submit)
+            │
+            ▼
+   full test: all steps from the job link, on 2–3 sample jobs
+            │
+   problem? ── yes ──▶ find the failing step ─▶ replace only that part ─▶ full test again
+            │ no
+            ▼
+   save in fillers/&lt;company&gt;/ (after my review)
+</pre>
+
+  <h3>Walkthrough (HCLTech as the example)</h3>
+  <ol class="steps">
+    <li><strong>Open.</strong> The browser opens the job link. If a login page shows up, <code>ask_human</code> runs and I log in once.</li>
+    <li><strong>Look.</strong> <code>observe</code> reads the page. It's a job description with an "Apply" button, not a form.</li>
+    <li><strong>Step 1: click Apply.</strong> Qwen writes <code>step_01_click_apply</code>. <code>run_step</code> runs it. The form page appears, so the step passes and is saved.</li>
+    <li><strong>Look again.</strong> Now it's a form. Fields found: first name, last name, email, phone (a country code dropdown plus a number box), resume upload, and so on.</li>
+    <li><strong>Step 2: name.</strong> Qwen writes <code>step_02_name</code>. It runs, then the harness reads the boxes back to confirm the values went in.</li>
+    <li><strong>Step 3: email.</strong> Same as name.</li>
+    <li><strong>Step 4: phone.</strong> The agent sees two parts: a dropdown for the country code and a box for the number. It writes one step that fills both, runs it, and checks that the dropdown shows India (+91) and the box shows the number. If the first try picks the dropdown option the wrong way, Qwen gets the error and changes only those lines.</li>
+    <li><strong>Keep going.</strong> One field at a time. At a Next button it clicks, looks at the new page, and carries on. It stops at the final review page and <strong>never presses submit</strong>.</li>
+    <li><strong>Full test.</strong> Run every step from the job link on 2–3 sample jobs. If something breaks on one of them, for example the resume upload isn't ready yet on the second job, it finds the failing step and replaces only that part.</li>
+    <li><strong>Review and save.</strong> I see the report, then <code>steps.py</code> is saved in <code>fillers/&lt;company&gt;/</code>.</li>
+  </ol>
+
+  <h3>Fixing: replace only the wrong part, never the whole code</h3>
+  <ul>
+    <li>The code is <strong>never regenerated from scratch</strong>. Once a step passes, it's locked. Qwen can only change it if a later test shows that exact step is the one failing.</li>
+    <li>A fix is one <code>edit_file</code> call: the exact wrong lines → the right lines, inside the one failing step.</li>
+    <li>After every fix, the earlier steps run again. If any of them now fails, the fix is undone automatically.</li>
+  </ul>
+<pre>
+# step_04_phone, first try. Failed: "no option '+91'. Options look like 'India (+91)'"
+pick(page, "Country Code", "+91")
+
+# the only line Qwen replaced
+pick(page, "Country Code", "India (+91)")
+</pre>
+
+  <h3>How each field type is handled</h3>
+  <p>Qwen doesn't write raw browser code for each field. It calls small hand-written helpers (<code>click</code>, <code>fill</code>, <code>pick</code>, <code>upload</code>, <code>check</code>), usually one line per field.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Field type</th><th>How it's filled</th><th>How the step is checked</th></tr></thead>
+    <tbody>
+      <tr><td>Button (Apply, Next, Save)</td><td><code>click(page, "Apply")</code>, found by its visible text</td><td>The expected page or section appears</td></tr>
+      <tr><td>Text box (name, email, city)</td><td><code>fill(page, "Email", p.email)</code>, found by its label</td><td>The value is read back from the box</td></tr>
+      <tr><td>Dropdown, normal</td><td><code>pick(page, "Country", "India")</code></td><td>The selected text matches</td></tr>
+      <tr><td>Dropdown, custom or searchable</td><td><code>pick</code> opens it, types, and clicks the option in the list</td><td>The text shown in the dropdown matches</td></tr>
+      <tr><td>Phone (code + number)</td><td>One step, two parts: <code>pick</code> for the code, <code>fill</code> for the number</td><td>Both parts show the expected values</td></tr>
+      <tr><td>File upload (resume)</td><td><code>upload(page, "Resume", p.resume)</code></td><td>The file name appears on the page</td></tr>
+      <tr><td>Radio / checkbox (yes/no, consent)</td><td><code>check(page, "Willing to relocate", "Yes")</code></td><td>The option is shown as selected</td></tr>
+      <tr><td>Date</td><td><code>fill</code> in the format the field shows, or the date picker</td><td>The value is read back</td></tr>
+      <tr><td>New page (Next / Continue)</td><td><code>click</code>, then <code>observe</code> again</td><td>New fields appear</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>When the loop stops</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Condition</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pass">Full test passes</span> on all 2–3 sample jobs</td><td>Write a review report (diff, test results, log summary). I review it, and only then is it saved in <code>fillers/&lt;company&gt;/</code>.</td></tr>
+      <tr><td>Same step fails the same way 3 times in a row</td><td>Change approach: <code>observe</code> that part of the page again, and show Qwen a similar working step as the example. If it still fails 2 more times, ask me.</td></tr>
+      <tr><td><span class="fail">Hard limit</span>: 8 tries per step, or 60 per company</td><td>Stop, keep every step that passed, and ask me, with the log attached.</td></tr>
+      <tr><td>Login wall or CAPTCHA</td><td>Stop at once and ask me. Don't try to get around it. Resume after I've logged in with the saved browser profile.</td></tr>
+      <tr><td>A fix breaks an earlier step</td><td>Undo that edit automatically, log it, and tell Qwen which step went backwards.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>What "right" means (the checks)</h3>
+  <ol class="steps">
+    <li>Each step runs on the live page and its own check passes (value read back, or the next page appears).</li>
+    <li>The file is valid Python and passes lint.</li>
+    <li>Sandbox rules: only the helpers and allowed imports, no submit call, no reading of credentials, no network calls outside the target site.</li>
+    <li>The full test, starting from the job link, reaches the final review page on every sample job, with every required field filled and the resume attached.</li>
+    <li>The same <code>steps.py</code> passes on every sample job for that company. This proves "same code for the same company".</li>
+  </ol>
+
+  <h3>Improving later (after it works)</h3>
+  <ul>
+    <li>Every real run also writes a fill report. If a run fails because the site changed, the loop starts in <strong>repair mode</strong>: it runs the saved steps until the one that fails, and fixes only that step.</li>
+    <li>The failing job link gets added to <code>tests.yaml</code>, so the fix has to pass on the old samples and the new one.</li>
+    <li>Fixes are small edits, so the diff I review stays short.</li>
+  </ul>
+
+  <h2>4. The first two targets</h2>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">CAPGEMINI</span>
+      <h3>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</h3>
+      <ul>
+        <li><strong>Start page:</strong> job description, filled in by script. Wait until the Apply button shows.</li>
+        <li><strong>Step 1:</strong> click Apply. It goes to <code>careers.capgemini.com</code>, possibly in a new tab, which the step has to follow, and then to the SuccessFactors apply form.</li>
+        <li><strong>Then:</strong> field steps, one at a time.</li>
+        <li><strong>Samples:</strong> 196626, 355474, 220549.</li>
+      </ul>
+    </div>
+    <div class="group alt">
+      <span class="tag">HCLTECH</span>
+      <h3>careers.hcltech.com/job/…/180703-en_US</h3>
+      <ul>
+        <li><strong>Start page:</strong> job description with an Apply button.</li>
+        <li><strong>Step 1:</strong> click Apply. It goes to <code>/talentcommunity/apply/180703/</code>, the SuccessFactors apply form.</li>
+        <li><strong>Then:</strong> field steps, one at a time.</li>
+        <li><strong>Samples:</strong> 180703, plus 1–2 more HCLTech postings.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="group ats">
+    <span class="tag">BOTH FORMS ARE SAP SUCCESSFACTORS</span>
+    <p style="margin:10px 0 0;font-size:.9rem">Qwen builds each company step by step. Once HCLTech's steps work, they're shown to Qwen as the example while it builds Capgemini, so most field steps come out right on the first try. The job API shortcut found during research (going straight to the apply URL) is kept as a possible speed-up for later. It isn't used for now.</p>
+  </div>
+
+  <h3>Build order</h3>
+  <ol class="steps">
+    <li>Shared core, by hand: browser, helpers (<code>click</code>, <code>fill</code>, <code>pick</code>, <code>upload</code>, <code>check</code>), <code>run_step</code>, checks, the action log, and the only code that can submit.</li>
+    <li>HCLTech, built <strong>by Qwen</strong>, step by step. This is the first real test of the loop.</li>
+    <li>Capgemini, built by Qwen step by step, with HCLTech's steps as the example.</li>
+    <li>Full test of both on all sample jobs.</li>
+  </ol>
+
+  <h3>Files the loop will create</h3>
+<pre>
+core/        browser.py  helpers.py  checks.py  log.py  submit.py   # hand-written
+fillers/
+  hcltech/    manifest.yaml  steps.py  tests.yaml
+  capgemini/  manifest.yaml  steps.py  tests.yaml
+profiles/dummy.yaml               # fake candidate (section 7)
+runs/&lt;company&gt;/&lt;timestamp&gt;/
+  probe/      trimmed page snapshots (reused across tries)
+  actions.jsonl  actions.md  report.html  screenshots/
+</pre>
+<pre>
+# fillers/hcltech/steps.py: grows one step at a time
+def step_01_click_apply(page, p): click(page, "Apply")
+def step_02_name(page, p):        fill(page, "First Name", p.first_name); fill(page, "Last Name", p.last_name)
+def step_03_email(page, p):       fill(page, "Email", p.email)
+def step_04_phone(page, p):       pick(page, "Country Code", "India (+91)"); fill(page, "Phone Number", p.phone)
+def step_05_resume(page, p):      upload(page, "Resume", p.resume)
+# ...more steps added as the agent moves through the form
+</pre>
+
+  <h2>5. Action log: notes of everything the agent does</h2>
+  <p>Every tool call and every decision is written down as it happens, so I can follow the build afterwards and see why it failed or passed.</p>
+  <ul>
+    <li><code>actions.jsonl</code>: one line per action, machine-readable.</li>
+    <li><code>actions.md</code>: the same steps in plain sentences, readable at a glance.</li>
+    <li><strong>Fields:</strong> time, round, actor (<code>qwen</code> / <code>harness</code> / <code>human</code>), tool, short input, result (pass/fail plus a one-line reason), tokens in/out, seconds taken.</li>
+    <li>The log never contains passwords, cookies, or real personal data. Field values from the profile are masked (<code>first_name=***</code>).</li>
+  </ul>
+  <h3>Example (what an HCLTech build might look like)</h3>
+<pre class="log">
+{"t":"10:02:11","actor":"harness","tool":"observe","in":"hcltech/180703","result":"job description · Apply button found","s":6.1}
+{"t":"10:02:20","actor":"qwen","tool":"add_step","in":"step_01_click_apply","tok":"1.2k/0.1k","s":3.0}
+{"t":"10:02:24","actor":"harness","tool":"run_step","in":"step_01_click_apply","result":"PASS · form page appeared","s":3.8}
+{"t":"10:02:30","actor":"harness","tool":"observe","in":"form page","result":"14 fields · phone = dropdown + box","s":2.2}
+{"t":"10:02:34","actor":"qwen","tool":"add_step","in":"step_02_name","tok":"1.4k/0.1k","s":2.9}
+{"t":"10:02:35","actor":"harness","tool":"run_step","in":"step_02_name","result":"PASS · values read back","s":0.9}
+{"t":"10:02:39","actor":"qwen","tool":"add_step","in":"step_03_email","tok":"1.4k/0.1k","s":2.6}
+{"t":"10:02:40","actor":"harness","tool":"run_step","in":"step_03_email","result":"PASS","s":0.7}
+{"t":"10:02:45","actor":"qwen","tool":"add_step","in":"step_04_phone","tok":"1.5k/0.1k","s":3.1}
+{"t":"10:02:46","actor":"harness","tool":"run_step","in":"step_04_phone","result":"FAIL · no option '+91'; options look like 'India (+91)'","s":1.2}
+{"t":"10:02:49","actor":"qwen","tool":"edit_file","in":"step_04_phone: '+91' → 'India (+91)'","tok":"0.5k/0.05k","s":1.8}
+{"t":"10:02:50","actor":"harness","tool":"run_step","in":"steps 01–04","result":"PASS","s":5.6}
+{"t":"10:06:12","actor":"harness","tool":"run_checks","in":"full test, 3 samples","result":"FAIL · sample 2, step_05_resume: upload field not ready","s":71.0}
+{"t":"10:06:16","actor":"qwen","tool":"edit_file","in":"step_05_resume: wait for upload field first","tok":"0.6k/0.05k","s":2.0}
+{"t":"10:07:30","actor":"harness","tool":"run_checks","in":"full test, 3 samples","result":"PASS 3/3 · report written","s":72.4}
+</pre>
+  <p class="muted" style="font-size:.85rem">The values above are illustrative, not from a real run.</p>
+
+  <h2>6. Using fewer tokens so the code is created faster</h2>
+  <p>On a local 30B model, fewer tokens means faster rounds. Each method below cuts what goes into or comes out of the model.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Method</th><th>Saves</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Edits, not rewrites.</strong> Qwen never resends the whole file. A fix is an <code>edit_file</code> call (old text → new text) inside one step.</td><td>Output: a fix is around 100 tokens instead of a 1,500-token file.</td></tr>
+      <tr><td><strong>One step at a time.</strong> Each prompt is about one action on one page: the trimmed view of that page, the names of the steps done so far, and the profile keys.</td><td>Input: small prompts, and mistakes are caught at the field where they happen.</td></tr>
+      <tr><td><strong>Helpers, not raw browser code.</strong> Qwen calls <code>click</code> / <code>fill</code> / <code>pick</code> / <code>upload</code> / <code>check</code>, usually one line per field.</td><td>Output, and fewer browser-timing bugs.</td></tr>
+      <tr><td><strong>Trimmed page view.</strong> Accessibility tree plus network calls, never raw HTML. Drop hidden, decorative and duplicate nodes.</td><td>Input: often 50–100× smaller than the HTML.</td></tr>
+      <tr><td><strong>Probe once, reuse.</strong> Page snapshots cached per URL. Re-observe only the failing step.</td><td>Browser time, and input tokens per round.</td></tr>
+      <tr><td><strong>First failure only.</strong> Send the first failing check and the last 20 or so lines of the error, not the full test output.</td><td>Input per round.</td></tr>
+      <tr><td><strong>Cheap checks first.</strong> Lint and the interface check run in under a second. The slow browser fill runs only if they pass.</td><td>Wall-clock time.</td></tr>
+      <tr><td><strong>Short, stable prompt prefix.</strong> System prompt, interface and worked example stay identical every round, so the local server's prefix cache (vLLM / llama.cpp) reuses them.</td><td>Prompt processing time on every round after the first.</td></tr>
+      <tr><td><strong>Fresh context per step.</strong> Don't carry the whole history. Each try gets the current step, its error, and the last 3 notes.</td><td>Context stays small, and the model stays focused.</td></tr>
+      <tr><td><strong>Short notes, no long reasoning.</strong> Ask for one line of "why" and then the edit. Use structured output (JSON tool calls).</td><td>Output.</td></tr>
+      <tr><td><strong>Low temperature.</strong> Fewer random retries.</td><td>Rounds.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The log records tokens in and out for every round, so it's easy to see which step is expensive and trim it.</p>
+
+  <h2>7. Dummy candidate profile (for now)</h2>
+  <p>All test fills use clearly fake data. My real details and resume are not used until the fillers have passed review.</p>
+<pre>
+# profiles/dummy.yaml
+first_name: Test
+last_name: Candidate
+email: test.candidate@example.com     # example.com is reserved for testing
+phone: "+91 90000 00000"
+country: India
+city: Pune
+current_title: SAP BTP Consultant
+total_experience_years: 5
+notice_period_days: 30
+current_ctc: "0"                     # placeholder
+expected_ctc: "0"                    # placeholder
+highest_degree: B.Tech
+graduation_year: 2019
+skills: [SAP BTP, CAP, Fiori, Python]
+linkedin: https://www.linkedin.com/in/example
+resume: profiles/dummy_resume.pdf    # a one-page fake PDF
+answers:
+  willing_to_relocate: "Yes"
+  work_authorization_india: "Yes"
+  sponsorship_required: "No"
+</pre>
+  <ul>
+    <li>Test fills never press submit, so this data never reaches either company.</li>
+    <li>Use a separate test account on each site if possible, not my real one.</li>
+    <li>Swapping to the real profile later only means pointing at another file. No code changes.</li>
+  </ul>
+
+  <h2>8. Still to decide</h2>
+  <ul>
+    <li>Can test fills run on a test candidate account, or does each site only allow one real account per person?</li>
+    <li>Are the limits right (8 tries per step, 60 per company, 3 identical failures)?</li>
+    <li>Should a from-scratch rebuild of a working company be kept as a regular benchmark, re-run whenever the prompts change?</li>
+    <li>Find 1–2 more HCLTech sample postings for <code>tests.yaml</code>.</li>
+    <li>When a step fails halfway through a form, should the next try restart from the job link, or keep the page as it is?</li>
+    <li>The intent doc still describes resolver + shared driver files. It needs to be brought in line with the step-by-step <code>steps.py</code> format.</li>
+  </ul>
+  <h3>Later: the reuse check</h3>
+  <ul>
+    <li>A step that runs before the build: match the link against the saved fillers in <code>fillers/</code>. If one covers this company, skip the build and fill the form directly.</li>
+    <li>Until then, every link triggers a fresh build, even for a company that was built before. The files are still saved in the reusable format, so the check can be added without changing them.</li>
+  </ul>
+</div>
+
+<div data-lang-block="hinglish" lang="hi-Latn">
+  <p class="meta">Plan document · v1 · 14 Oct 2026 · <a href="job-form-agent-intent.html">job-form-agent-intent.html</a> ka saathi doc</p>
+  <h1>Code Build Loop</h1>
+  <p class="lede">Builder agent HCLTech aur Capgemini ke liye form-filler code kaise likhega, aur ek-ek step karke likhega, aur tab tak fix karta rahega jab tak woh sahi kaam na kare. Browser mein job link khulte hi build turant shuru hota hai: abhi "kya iska code pehle se hai?" wala koi check nahi hai. Phir woh page dekhta hai, ek action ka code likhta hai, browser mein chalata hai, aur fail ho to sirf tooti lines theek karta hai, step dar step. Har action log mein note hoga, dummy candidate data use hoga, aur tokens kam se kam lagenge taaki local Qwen3-Coder-30B par har round fast rahe.</p>
+
+  <div class="callout">
+    <strong>Main rule:</strong> loop tabhi rukega jab har sample URL par har check pass ho, ya hard limit hit ho jaye. Tab woh log ke saath mujhe handover karega.
+    "Dikhne mein sahi lag raha hai" done nahi hai. Done ka matlab hai tests pass.
+  </div>
+  <div class="callout">
+    <strong>Abhi ke liye:</strong> link do → browser job post kholta hai → agent turant filler banana shuru kar deta hai.
+    Woh pehle existing code <em>nahi</em> dhoondhta. Saved fillers check aur reuse karne wala system baad mein aayega (section 8 dekho).
+  </div>
+
+  <h2>1. Is doc mein kya hai</h2>
+  <ul>
+    <li><strong>Build loop:</strong> code ek-ek step karke kaise banta hai (Apply click, phir naam, email, phone…), har step likhte hi test hota hai, aur kuch fail ho to sirf toota hissa replace hota hai.</li>
+    <li><strong>Pehle do targets:</strong> HCLTech <code>careers.hcltech.com/job/…/180703-en_US</code> aur Capgemini <code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code>.</li>
+    <li><strong>Action log:</strong> build karte waqt agent ke har step ka note.</li>
+    <li><strong>Dummy data:</strong> ek fake candidate profile, saare test fills ke liye.</li>
+    <li><strong>Harness:</strong> agent wahi observe → edit → run → result padho wala tool loop use karta hai jo Claude Code jaisa coding agent karta hai.</li>
+    <li><strong>Token saving:</strong> woh tareeke jo prompts chhote rakhte hain taaki code jaldi bane.</li>
+  </ul>
+  <p class="muted" style="font-size:.9rem">Yeh sirf plan hai. Abhi tak koi code likha ya badla nahi gaya.</p>
+
+  <h2>2. Harness: coding agent jaisa hi pattern</h2>
+  <p>Builder agent ko ek bada prompt dekar poori file wapas nahi milti. Woh coding agent ki tarah kaam karta hai: chhote tool calls ka ek loop, jahan har result agla step decide karta hai. Loop ke andar model Qwen hai, aur uske around ka harness plain code hai.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tool</th><th>Kya karta hai</th><th>Claude Code mein iske jaisa</th></tr></thead>
+    <tbody>
+      <tr><td><code>observe(url)</code></td><td>Page ko Playwright mein kholta hai aur trimmed view deta hai: form fields, labels, buttons (accessibility tree) aur network calls. Har URL ke liye cache hota hai.</td><td>Read / WebFetch</td></tr>
+      <tr><td><code>read_file(path, lines?)</code></td><td>Kisi existing file ka hissa padhta hai, jaise worked example, interface, ya current draft.</td><td>Read</td></tr>
+      <tr><td><code>add_step(name, code)</code></td><td><code>steps.py</code> ke end mein ek naya step jodta hai. Pass ho chuke step ko overwrite nahi kar sakta.</td><td>Write</td></tr>
+      <tr><td><code>edit_file(path, old, new)</code></td><td>Failing step ke andar ek exact text ko replace karta hai. Har fix isi se.</td><td>Edit</td></tr>
+      <tr><td><code>run_step(name)</code></td><td>Live browser mein, page abhi jahan hai wahin se, sirf naya step chalata hai, phir us step ka check (value wapas padhna, ya agla page khulna).</td><td>Bash (ek quick run)</td></tr>
+      <tr><td><code>run_checks(target)</code></td><td>Full test. Is order mein chalata hai: syntax/lint → sandbox rules → har sample job par job link se saare steps (kabhi submit nahi). Sirf pehla failure return karta hai.</td><td>Bash (tests)</td></tr>
+      <tr><td><code>note(text)</code></td><td>Action log mein ek line likhta hai: agla step kyun le raha hai.</td><td>Todo list / notes</td></tr>
+      <tr><td><code>ask_human(question)</code></td><td>Rukta hai aur mujhse poochta hai. Login, CAPTCHA, ya limit hit hone par.</td><td>AskUserQuestion</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>Qwen bahar ki duniya tak sirf in tools se pahunch sakta hai. Woh koi bhi shell command nahi chala sakta, form submit nahi kar sakta, credentials nahi padh sakta.</li>
+    <li>Paths sirf usi ek filler folder tak limited hain jo ban raha hai (jaise <code>fillers/hcltech/</code>), plus shared core aur worked example ka read-only access.</li>
+    <li>Tool results jaan-boojh kar chhote hain (section 6 dekho). Har result mein bas utna hota hai jitna agle decision ke liye chahiye.</li>
+  </ul>
+
+  <h2>3. Build loop: ek baar mein ek step</h2>
+  <p>Agent filler waise hi banata hai jaise koi insaan naya form seekhta hai: page dekho, ek kaam karo, check karo ki hua ya nahi, phir agla kaam. Code ek-ek chhote step se badhta hai, aur har step likhte hi live browser mein chalaya jata hai.</p>
+<pre>
+ job link ─▶ browser mein kholo (abhi existing code ka check nahi)
+                 │
+                 ▼
+   ┌─▶ page dekho (observe) ─▶ yeh kis type ka page hai?
+   │        │
+   │        ├─ job description + Apply button ──▶ agla action = Apply click
+   │        └─ form page ──────────────────────▶ agla action = agla khaali field
+   │                                              (ya Next / Continue button)
+   │        ▼
+   │   Qwen us EK action ka code likhta hai aur steps.py mein jodta hai
+   │        │
+   │        ▼
+   │   run_step: live browser mein sirf woh action chalao, phir check karo
+   │        │
+   │   chala? ── nahi ──▶ error Qwen ko ─▶ sirf tooti lines replace ─▶ phir run_step
+   │        │ haan
+   └────────┘   final review page tak repeat (submit kabhi nahi)
+            │
+            ▼
+   full test: job link se saare steps, 2–3 sample jobs par
+            │
+   problem? ── haan ──▶ failing step dhoondho ─▶ sirf woh hissa replace ─▶ phir full test
+            │ nahi
+            ▼
+   fillers/&lt;company&gt;/ mein save (mere review ke baad)
+</pre>
+
+  <h3>Walkthrough (HCLTech example)</h3>
+  <ol class="steps">
+    <li><strong>Kholo.</strong> Browser job link kholta hai. Login page aaye to <code>ask_human</code> chalta hai aur main ek baar login karta hoon.</li>
+    <li><strong>Dekho.</strong> <code>observe</code> page padhta hai. Yeh job description hai jismein "Apply" button hai, form nahi.</li>
+    <li><strong>Step 1: Apply click.</strong> Qwen <code>step_01_click_apply</code> likhta hai. <code>run_step</code> use chalata hai. Form page khul jata hai, to step pass hokar save ho jata hai.</li>
+    <li><strong>Phir se dekho.</strong> Ab yeh form hai. Fields mile: first name, last name, email, phone (country code ka dropdown plus number ka box), resume upload, waghera.</li>
+    <li><strong>Step 2: naam.</strong> Qwen <code>step_02_name</code> likhta hai. Woh chalta hai, phir harness boxes ki value wapas padh kar confirm karta hai ki value gayi.</li>
+    <li><strong>Step 3: email.</strong> Naam jaisa hi.</li>
+    <li><strong>Step 4: phone.</strong> Agent ko do hisse dikhte hain: country code ka dropdown aur number ka box. Woh ek step likhta hai jo dono bharta hai, chalata hai, aur check karta hai ki dropdown mein India (+91) aur box mein number dikh raha hai. Agar pehli try mein dropdown option galat tareeke se chuna gaya, to Qwen ko error milta hai aur woh sirf wahi lines badalta hai.</li>
+    <li><strong>Aage badho.</strong> Ek baar mein ek field. Next button aaye to click karo, naya page dekho, aur aage badho. Final review page par ruko aur <strong>submit kabhi mat dabao</strong>.</li>
+    <li><strong>Full test.</strong> Job link se saare steps 2–3 sample jobs par chalao. Kisi ek par kuch toote, jaise doosri job par resume upload abhi ready na ho, to failing step dhoondho aur sirf woh hissa replace karo.</li>
+    <li><strong>Review aur save.</strong> Main report dekhta hoon, phir <code>steps.py</code> <code>fillers/&lt;company&gt;/</code> mein save hota hai.</li>
+  </ol>
+
+  <h3>Fix karna: sirf galat hissa replace, poora code kabhi nahi</h3>
+  <ul>
+    <li>Code <strong>kabhi scratch se dobara nahi banta</strong>. Ek baar step pass ho gaya to woh lock ho jata hai. Qwen use tabhi badal sakta hai jab baad ka test dikhaye ki wahi step fail ho raha hai.</li>
+    <li>Fix ek <code>edit_file</code> call hai: exact galat lines → sahi lines, sirf us ek failing step ke andar.</li>
+    <li>Har fix ke baad pichhle steps phir se chalte hain. Agar unmein se koi ab fail ho, to fix apne aap undo ho jata hai.</li>
+  </ul>
+<pre>
+# step_04_phone, pehli try. Fail: "no option '+91'. Options look like 'India (+91)'"
+pick(page, "Country Code", "+91")
+
+# Qwen ne sirf yeh line replace ki
+pick(page, "Country Code", "India (+91)")
+</pre>
+
+  <h3>Har field type kaise handle hota hai</h3>
+  <p>Qwen har field ke liye raw browser code nahi likhta. Woh chhote haath se likhe helpers (<code>click</code>, <code>fill</code>, <code>pick</code>, <code>upload</code>, <code>check</code>) call karta hai, aksar har field ke liye ek line.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Field type</th><th>Kaise bharta hai</th><th>Step kaise check hota hai</th></tr></thead>
+    <tbody>
+      <tr><td>Button (Apply, Next, Save)</td><td><code>click(page, "Apply")</code>, dikhne wale text se dhoondh kar</td><td>Expected page ya section dikhta hai</td></tr>
+      <tr><td>Text box (naam, email, city)</td><td><code>fill(page, "Email", p.email)</code>, label se dhoondh kar</td><td>Box se value wapas padhi jati hai</td></tr>
+      <tr><td>Dropdown, normal</td><td><code>pick(page, "Country", "India")</code></td><td>Selected text match karta hai</td></tr>
+      <tr><td>Dropdown, custom ya searchable</td><td><code>pick</code> use kholta hai, type karta hai, aur list mein option click karta hai</td><td>Dropdown mein dikhne wala text match karta hai</td></tr>
+      <tr><td>Phone (code + number)</td><td>Ek step, do hisse: code ke liye <code>pick</code>, number ke liye <code>fill</code></td><td>Dono hisse expected value dikhate hain</td></tr>
+      <tr><td>File upload (resume)</td><td><code>upload(page, "Resume", p.resume)</code></td><td>Page par file ka naam dikhta hai</td></tr>
+      <tr><td>Radio / checkbox (yes/no, consent)</td><td><code>check(page, "Willing to relocate", "Yes")</code></td><td>Option selected dikhta hai</td></tr>
+      <tr><td>Date</td><td>Field jo format dikhaye usi mein <code>fill</code>, ya date picker</td><td>Value wapas padhi jati hai</td></tr>
+      <tr><td>Naya page (Next / Continue)</td><td><code>click</code>, phir dobara <code>observe</code></td><td>Naye fields dikhte hain</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Loop kab rukta hai</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Condition</th><th>Kya hota hai</th></tr></thead>
+    <tbody>
+      <tr><td>Saare 2–3 sample jobs par <span class="pass">full test pass</span></td><td>Review report banao (diff, test results, log summary). Main review karta hoon, uske baad hi <code>fillers/&lt;company&gt;/</code> mein save hota hai.</td></tr>
+      <tr><td>Ek hi step lagatar 3 baar same tarah fail</td><td>Approach badlo: page ka woh hissa phir se <code>observe</code> karo, aur Qwen ko example ke taur par milta-julta chalta hua step dikhao. Phir bhi 2 baar aur fail ho to mujhse poocho.</td></tr>
+      <tr><td><span class="fail">Hard limit</span>: har step ki 8 tries, ya har company ki 60</td><td>Ruko, jo steps pass hue woh sab rakho, aur log ke saath mujhse poocho.</td></tr>
+      <tr><td>Login wall ya CAPTCHA</td><td>Turant ruko aur mujhse poocho. Bypass karne ki koshish nahi. Saved browser profile mein mere login ke baad resume karo.</td></tr>
+      <tr><td>Kisi fix ne pichhla step tod diya</td><td>Woh edit apne aap undo karo, log karo, aur Qwen ko batao kaunsa step peeche gaya.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>"Sahi" ka matlab (checks)</h3>
+  <ol class="steps">
+    <li>Har step live page par chalta hai aur uska apna check pass hota hai (value wapas padhi gayi, ya agla page khula).</li>
+    <li>File valid Python hai aur lint pass karti hai.</li>
+    <li>Sandbox rules: sirf helpers aur allowed imports, koi submit call nahi, credentials padhna nahi, target site ke bahar koi network call nahi.</li>
+    <li>Job link se shuru hone wala full test har sample job par final review page tak pahunchta hai, har required field bhara hai aur resume attached hai.</li>
+    <li>Wahi <code>steps.py</code> us company ki har sample job par pass hota hai. Yahi "same company ke liye same code" ka proof hai.</li>
+  </ol>
+
+  <h3>Baad mein improve karna (kaam karne ke baad)</h3>
+  <ul>
+    <li>Har real run bhi ek fill report likhta hai. Agar site badalne ki wajah se run fail ho, to loop <strong>repair mode</strong> mein chalta hai: saved steps failing step tak chalte hain, aur sirf wahi step fix hota hai.</li>
+    <li>Failing job link <code>tests.yaml</code> mein add ho jata hai, to fix ko purane samples aur naye wale, dono par pass karna padta hai.</li>
+    <li>Fixes chhote edits hote hain, isliye jo diff main review karta hoon woh chhota rehta hai.</li>
+  </ul>
+
+  <h2>4. Pehle do targets</h2>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">CAPGEMINI</span>
+      <h3>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</h3>
+      <ul>
+        <li><strong>Start page:</strong> job description, script se bharta hai. Apply button dikhne tak ruko.</li>
+        <li><strong>Step 1:</strong> Apply click. Yeh <code>careers.capgemini.com</code> par jata hai, shayad naye tab mein (step ko use follow karna hoga), phir SuccessFactors apply form par.</li>
+        <li><strong>Phir:</strong> field steps, ek baar mein ek.</li>
+        <li><strong>Samples:</strong> 196626, 355474, 220549.</li>
+      </ul>
+    </div>
+    <div class="group alt">
+      <span class="tag">HCLTECH</span>
+      <h3>careers.hcltech.com/job/…/180703-en_US</h3>
+      <ul>
+        <li><strong>Start page:</strong> job description, Apply button ke saath.</li>
+        <li><strong>Step 1:</strong> Apply click. Yeh <code>/talentcommunity/apply/180703/</code> par jata hai, jo SuccessFactors apply form hai.</li>
+        <li><strong>Phir:</strong> field steps, ek baar mein ek.</li>
+        <li><strong>Samples:</strong> 180703, plus 1–2 aur HCLTech postings.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="group ats">
+    <span class="tag">DONO FORMS SAP SUCCESSFACTORS HAIN</span>
+    <p style="margin:10px 0 0;font-size:.9rem">Qwen har company step by step banata hai. HCLTech ke steps chal jaane ke baad, Capgemini banate waqt woh Qwen ko example ke taur par dikhaye jate hain, to zyadatar field steps pehli try mein sahi bante hain. Research mein mila job API shortcut (seedha apply URL par jaana) baad ke speed-up ke liye rakha hai. Abhi use nahi hoga.</p>
+  </div>
+
+  <h3>Build order</h3>
+  <ol class="steps">
+    <li>Shared core, haath se: browser, helpers (<code>click</code>, <code>fill</code>, <code>pick</code>, <code>upload</code>, <code>check</code>), <code>run_step</code>, checks, action log, aur submit karne wala akela code.</li>
+    <li>HCLTech, <strong>Qwen se</strong>, step by step. Yeh loop ka pehla asli test hai.</li>
+    <li>Capgemini, Qwen se step by step, HCLTech ke steps example ke taur par.</li>
+    <li>Dono ka saare sample jobs par full test.</li>
+  </ol>
+
+  <h3>Loop kaunsi files banayega</h3>
+<pre>
+core/        browser.py  helpers.py  checks.py  log.py  submit.py   # haath se likha
+fillers/
+  hcltech/    manifest.yaml  steps.py  tests.yaml
+  capgemini/  manifest.yaml  steps.py  tests.yaml
+profiles/dummy.yaml               # fake candidate (section 7)
+runs/&lt;company&gt;/&lt;timestamp&gt;/
+  probe/      trimmed page snapshots (tries mein reuse)
+  actions.jsonl  actions.md  report.html  screenshots/
+</pre>
+<pre>
+# fillers/hcltech/steps.py: ek-ek step se badhta hai
+def step_01_click_apply(page, p): click(page, "Apply")
+def step_02_name(page, p):        fill(page, "First Name", p.first_name); fill(page, "Last Name", p.last_name)
+def step_03_email(page, p):       fill(page, "Email", p.email)
+def step_04_phone(page, p):       pick(page, "Country Code", "India (+91)"); fill(page, "Phone Number", p.phone)
+def step_05_resume(page, p):      upload(page, "Resume", p.resume)
+# ...agent form mein aage badhte hue aur steps judte jaate hain
+</pre>
+
+  <h2>5. Action log: agent jo bhi kare uska note</h2>
+  <p>Har tool call aur har decision usi waqt likha jata hai, taaki main baad mein build follow kar sakoon aur dekh sakoon ki kyun fail ya pass hua.</p>
+  <ul>
+    <li><code>actions.jsonl</code>: har action ki ek line, machine-readable.</li>
+    <li><code>actions.md</code>: wahi steps simple sentences mein, ek nazar mein padhne layak.</li>
+    <li><strong>Fields:</strong> time, round, actor (<code>qwen</code> / <code>harness</code> / <code>human</code>), tool, chhota input, result (pass/fail plus ek line ki wajah), tokens in/out, kitne seconds lage.</li>
+    <li>Log mein kabhi passwords, cookies ya asli personal data nahi hota. Profile ki values masked hoti hain (<code>first_name=***</code>).</li>
+  </ul>
+  <h3>Example (HCLTech build kuch aisa dikh sakta hai)</h3>
+<pre class="log">
+{"t":"10:02:11","actor":"harness","tool":"observe","in":"hcltech/180703","result":"job description · Apply button found","s":6.1}
+{"t":"10:02:20","actor":"qwen","tool":"add_step","in":"step_01_click_apply","tok":"1.2k/0.1k","s":3.0}
+{"t":"10:02:24","actor":"harness","tool":"run_step","in":"step_01_click_apply","result":"PASS · form page appeared","s":3.8}
+{"t":"10:02:30","actor":"harness","tool":"observe","in":"form page","result":"14 fields · phone = dropdown + box","s":2.2}
+{"t":"10:02:34","actor":"qwen","tool":"add_step","in":"step_02_name","tok":"1.4k/0.1k","s":2.9}
+{"t":"10:02:35","actor":"harness","tool":"run_step","in":"step_02_name","result":"PASS · values read back","s":0.9}
+{"t":"10:02:39","actor":"qwen","tool":"add_step","in":"step_03_email","tok":"1.4k/0.1k","s":2.6}
+{"t":"10:02:40","actor":"harness","tool":"run_step","in":"step_03_email","result":"PASS","s":0.7}
+{"t":"10:02:45","actor":"qwen","tool":"add_step","in":"step_04_phone","tok":"1.5k/0.1k","s":3.1}
+{"t":"10:02:46","actor":"harness","tool":"run_step","in":"step_04_phone","result":"FAIL · no option '+91'; options look like 'India (+91)'","s":1.2}
+{"t":"10:02:49","actor":"qwen","tool":"edit_file","in":"step_04_phone: '+91' → 'India (+91)'","tok":"0.5k/0.05k","s":1.8}
+{"t":"10:02:50","actor":"harness","tool":"run_step","in":"steps 01–04","result":"PASS","s":5.6}
+{"t":"10:06:12","actor":"harness","tool":"run_checks","in":"full test, 3 samples","result":"FAIL · sample 2, step_05_resume: upload field not ready","s":71.0}
+{"t":"10:06:16","actor":"qwen","tool":"edit_file","in":"step_05_resume: wait for upload field first","tok":"0.6k/0.05k","s":2.0}
+{"t":"10:07:30","actor":"harness","tool":"run_checks","in":"full test, 3 samples","result":"PASS 3/3 · report written","s":72.4}
+</pre>
+  <p class="muted" style="font-size:.85rem">Upar ki values sirf example hain, kisi real run se nahi.</p>
+
+  <h2>6. Kam tokens, taaki code jaldi bane</h2>
+  <p>Local 30B model par kam tokens ka matlab hai fast rounds. Neeche ka har tareeka model mein jaane ya bahar aane wala text kam karta hai.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tareeka</th><th>Kya bachta hai</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Edits, rewrites nahi.</strong> Qwen poori file kabhi dobara nahi bhejta. Fix ek step ke andar ek <code>edit_file</code> call hai (purana text → naya text).</td><td>Output: ek fix lagbhag 100 tokens ka, 1,500-token ki poori file ke bajaye.</td></tr>
+      <tr><td><strong>Ek baar mein ek step.</strong> Har prompt ek page par ek action ke baare mein hai: us page ka trimmed view, ab tak ke steps ke naam, aur profile keys.</td><td>Input: chhote prompts, aur galti usi field par pakdi jati hai jahan hoti hai.</td></tr>
+      <tr><td><strong>Helpers, raw browser code nahi.</strong> Qwen <code>click</code> / <code>fill</code> / <code>pick</code> / <code>upload</code> / <code>check</code> call karta hai, aksar har field ke liye ek line.</td><td>Output, aur browser timing ke bugs kam.</td></tr>
+      <tr><td><strong>Trimmed page view.</strong> Accessibility tree plus network calls, raw HTML kabhi nahi. Hidden, decorative aur duplicate nodes hata do.</td><td>Input: aksar HTML se 50–100× chhota.</td></tr>
+      <tr><td><strong>Ek baar probe, phir reuse.</strong> Har URL ka page snapshot cache. Sirf failing step dobara observe karo.</td><td>Browser time, aur har round ke input tokens.</td></tr>
+      <tr><td><strong>Sirf pehla failure.</strong> Pehla failing check aur error ki aakhri 20 ke aas-paas lines bhejo, poora test output nahi.</td><td>Har round ka input.</td></tr>
+      <tr><td><strong>Saste checks pehle.</strong> Lint aur interface check ek second se kam mein chalte hain. Slow browser fill tabhi jab yeh pass hon.</td><td>Wall-clock time.</td></tr>
+      <tr><td><strong>Chhota, stable prompt prefix.</strong> System prompt, interface aur worked example har round mein same rehte hain, to local server ka prefix cache (vLLM / llama.cpp) unhe reuse karta hai.</td><td>Pehle round ke baad har round mein prompt processing time.</td></tr>
+      <tr><td><strong>Har step ke liye fresh context.</strong> Poori history saath mat le jao. Har try ko current step, uska error, aur aakhri 3 notes milte hain.</td><td>Context chhota rehta hai, aur model focused rehta hai.</td></tr>
+      <tr><td><strong>Chhote notes, lambi reasoning nahi.</strong> Ek line ka "kyun" maango aur phir edit. Structured output (JSON tool calls) use karo.</td><td>Output.</td></tr>
+      <tr><td><strong>Low temperature.</strong> Random retries kam.</td><td>Rounds.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Log har round ke tokens in aur out record karta hai, to aasani se dikh jata hai kaunsa step mehenga hai aur use trim kiya ja sakta hai.</p>
+
+  <h2>7. Dummy candidate profile (abhi ke liye)</h2>
+  <p>Saare test fills saaf taur par fake data use karte hain. Meri asli details aur resume tab tak use nahi honge jab tak fillers review pass na kar lein.</p>
+<pre>
+# profiles/dummy.yaml
+first_name: Test
+last_name: Candidate
+email: test.candidate@example.com     # example.com testing ke liye reserved hai
+phone: "+91 90000 00000"
+country: India
+city: Pune
+current_title: SAP BTP Consultant
+total_experience_years: 5
+notice_period_days: 30
+current_ctc: "0"                     # placeholder
+expected_ctc: "0"                    # placeholder
+highest_degree: B.Tech
+graduation_year: 2019
+skills: [SAP BTP, CAP, Fiori, Python]
+linkedin: https://www.linkedin.com/in/example
+resume: profiles/dummy_resume.pdf    # ek page ka fake PDF
+answers:
+  willing_to_relocate: "Yes"
+  work_authorization_india: "Yes"
+  sponsorship_required: "No"
+</pre>
+  <ul>
+    <li>Test fills kabhi submit nahi dabate, to yeh data kisi bhi company tak nahi pahunchta.</li>
+    <li>Ho sake to har site par alag test account use karo, mera asli wala nahi.</li>
+    <li>Baad mein real profile par switch karna matlab bas doosri file point karna. Koi code change nahi.</li>
+  </ul>
+
+  <h2>8. Abhi decide karna hai</h2>
+  <ul>
+    <li>Kya test fills test candidate account par chal sakte hain, ya har site ek insaan ko ek hi real account deti hai?</li>
+    <li>Kya limits theek hain (har step 8 tries, har company 60, 3 same failures)?</li>
+    <li>Kya kisi chalti company ka scratch se dobara build ek regular benchmark hona chahiye, jo prompts badalne par har baar chale?</li>
+    <li><code>tests.yaml</code> ke liye 1–2 aur HCLTech sample postings dhoondhni hain.</li>
+    <li>Form ke beech mein koi step fail ho, to agli try job link se dobara shuru ho, ya page jaisa hai waisa rakha jaye?</li>
+    <li>Intent doc abhi bhi resolver + shared driver files describe karta hai. Use step-by-step <code>steps.py</code> format ke saath match karna hai.</li>
+  </ul>
+  <h3>Baad mein: reuse check</h3>
+  <ul>
+    <li>Build se pehle chalne wala ek step: link ko <code>fillers/</code> ke saved fillers se match karo. Agar is company ka filler hai, to build skip karo aur seedha form bharo.</li>
+    <li>Tab tak har link par naya build hoga, chahe company pehle ban chuki ho. Files phir bhi reusable format mein save hoti hain, to baad mein check bina unhe badle add ho sakta hai.</li>
+  </ul>
+</div>
+
+</main>
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll('[data-set-lang]');
+  function setLang(lang) {
+    root.setAttribute('data-lang', lang);
+    root.setAttribute('lang', lang === 'hinglish' ? 'hi-Latn' : 'en');
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.setLang === lang)); });
+    try { localStorage.setItem('jfa-lang', lang); } catch (e) {}
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setLang(b.dataset.setLang); }); });
+  var saved = null;
+  try { saved = localStorage.getItem('jfa-lang'); } catch (e) {}
+  if (saved === 'en' || saved === 'hinglish') setLang(saved);
+})();
+</script>
+</body>
+</html>

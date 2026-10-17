@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Review your application</title>
+  <script src="common.js"></script>
+  <script>SF.requireLogin();</script>
+  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto}</style>
+</head>
+<body>
+  <h1>Review</h1>
+  <p>Please review your application before submitting.</p>
+  <dl>
+    <dt>Personal information</dt><dd>Provided</dd>
+    <dt>Resume</dt><dd>Attached</dd>
+    <dt>Additional information</dt><dd>Provided</dd>
+  </dl>
+  <button type="button" id="submit">Submit application</button>
+  <script>
+    document.getElementById("submit").addEventListener("click", () => SF.go("submitted.html"));
+  </script>
+</body>
+</html>

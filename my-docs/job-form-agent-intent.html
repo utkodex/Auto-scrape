@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Form Agent</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6a65;
+    --border: #e2e0d8; --accent: #2f5d50; --accent-soft: #e4eee9;
+    --alt: #8a4b2a; --alt-soft: #f5e8df; --code-bg: #f0eee8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #1f1f1c; --text: #ecebe6; --muted: #a09f98;
+      --border: #34332e; --accent: #8cc4b0; --accent-soft: #23332d;
+      --alt: #e0a37f; --alt-soft: #3a2a20; --code-bg: #2a2925;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --surface: #1f1f1c; --text: #ecebe6; --muted: #a09f98;
+    --border: #34332e; --accent: #8cc4b0; --accent-soft: #23332d;
+    --alt: #e0a37f; --alt-soft: #3a2a20; --code-bg: #2a2925;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 820px; margin: 0 auto; padding: 48px 16px 80px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.25rem; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  h3 { font-size: 1rem; margin: 24px 0 8px; }
+  p, li { color: var(--text); }
+  .lede { color: var(--muted); font-size: 1.1rem; margin: 0 0 24px; }
+  .meta { color: var(--muted); font-size: .875rem; }
+  code {
+    font: .875em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--code-bg); padding: 2px 5px; border-radius: 4px;
+    word-break: break-all;
+  }
+  pre {
+    background: var(--code-bg); padding: 16px; border-radius: 8px;
+    overflow-x: auto; font: .85rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  .callout {
+    background: var(--accent-soft); border-left: 4px solid var(--accent);
+    padding: 16px 20px; border-radius: 6px; margin: 24px 0;
+  }
+  .callout strong { color: var(--accent); }
+  .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 640px) { .groups { grid-template-columns: 1fr; } }
+  .group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; border-top: 4px solid var(--accent);
+  }
+  .group.alt { border-top-color: var(--alt); }
+  .group h3 { margin-top: 0; }
+  .tag {
+    display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .03em;
+    padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent);
+  }
+  .group.alt .tag { background: var(--alt-soft); color: var(--alt); }
+  .group ul { padding-left: 18px; margin: 10px 0 0; }
+  .group li { margin: 6px 0; font-size: .9rem; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .9rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .table-wrap { overflow-x: auto; }
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin: 8px 0; }
+  .muted { color: var(--muted); }
+</style>
+<style>
+  .group.ats { border-top-color: var(--muted); }
+  .group.ats .tag { background: var(--code-bg); color: var(--text); }
+</style>
+<style>
+  .topbar {
+    position: sticky; top: 0; z-index: 10; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 820px; margin: 0 auto; padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .topbar-title { font-weight: 600; font-size: .95rem; }
+  .lang-switch {
+    display: inline-flex; border: 1px solid var(--border); border-radius: 99px;
+    padding: 3px; background: var(--surface);
+  }
+  .lang-switch button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .85rem;
+    padding: 5px 14px; border-radius: 99px; cursor: pointer;
+  }
+  .lang-switch button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+  .lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [data-lang-block] { display: none; }
+  html[data-lang="en"] [data-lang-block="en"],
+  html[data-lang="hinglish"] [data-lang-block="hinglish"] { display: block; }
+  main { padding-top: 32px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="topbar-title">Job Form Agent</span>
+    <div class="lang-switch" role="group" aria-label="Language / Bhasha">
+      <button type="button" data-set-lang="en" aria-pressed="true">English</button>
+      <button type="button" data-set-lang="hinglish" aria-pressed="false">Hinglish</button>
+    </div>
+  </div>
+</header>
+<main>
+
+<div data-lang-block="en" lang="en">
+  <p class="meta">Intent document · v3 · 13 Oct 2026</p>
+  <h1>Job Form Agent</h1>
+  <p class="lede">An agent that <strong>creates form fillers</strong>. Given a job posting URL, it builds an automated filler for that company's application form, tests it, and saves it in a fixed, reusable format. The next job post from the same company or application system reuses the saved filler instead of building a new one. The building is done by a local LLM, <strong>Qwen3-Coder-30B</strong>.</p>
+
+  <div class="callout">
+    <strong>Main rule:</strong> build once, reuse for every job post. A filler is made for a <em>company or application system</em>, never for one job ID.
+    For now, when a new URL comes in, the agent opens it in the browser and starts building the filler straight away. Checking whether a saved filler already covers the URL is a later step (see section 9).
+  </div>
+
+  <h2>1. What I want</h2>
+  <p>There are two parts:</p>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">PART A: BUILDER AGENT</span>
+      <h3>Creates the fillers</h3>
+      <ul>
+        <li>Takes a job URL.</li>
+        <li>Opens the job link in the browser and starts building right away. It doesn't check for existing code yet.</li>
+        <li>Looks at the site (links, application system, form fields, network calls) and has Qwen write a filler in the standard format.</li>
+        <li>Tests the new filler on 2–3 job posts from the same company and fixes it until it passes.</li>
+        <li>Saves it to the registry, so the later reuse step has something to find.</li>
+      </ul>
+    </div>
+    <div class="group alt">
+      <span class="tag">PART B: FORM FILLER (generated)</span>
+      <h3>Fills the forms, reused across job posts</h3>
+      <ul>
+        <li>A saved package in the standard format (see section 2).</li>
+        <li>Works for <em>any</em> job post that matches its URL patterns. Only the job ID changes.</li>
+        <li>Fills fields from my profile, uploads my resume, and handles multi-step forms.</li>
+        <li>Pauses before the final submit for my review.</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Example:</strong> the builder creates a filler from <code>capgemini.com/…/jobs/196626-en_GB+sap_btp</code>. Then <code>355474</code> and <code>220549</code> run on that same filler with no new code. <code>careers.hcltech.com/…/180703-en_US</code> gets its own filler, but because HCLTech also runs on SuccessFactors, that filler reuses the same SuccessFactors steps and only needs its own settings.</p>
+
+  <h2>2. The reusable filler format</h2>
+  <p>Every filler the builder creates has the same layout, so any filler can be loaded, run, tested and reused the same way:</p>
+<pre>
+fillers/
+  successfactors/            ← shared steps for this application system (driver)
+    driver.py                   login, apply wizard, page navigation, upload
+  capgemini/                 ← one folder per company
+    manifest.yaml               name, URL patterns, application system, version, status
+    resolver.py                 job URL → real apply URL (capgemini: via job API)
+    fields.yaml                 form label → profile field, plus saved answers to known questions
+    tests.yaml                  2–3 sample job URLs the filler must pass
+  hcltech/
+    manifest.yaml
+    resolver.py
+    fields.yaml
+    tests.yaml
+</pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>File</th><th>What it holds</th><th>Why it makes the filler reusable</th></tr></thead>
+    <tbody>
+      <tr><td><code>manifest.yaml</code></td><td>URL patterns (e.g. <code>capgemini.com/*/jobs/*</code>), application system, version, status</td><td>Patterns match every job post for that company, not one job ID.</td></tr>
+      <tr><td><code>resolver.py</code></td><td>One function: <code>resolve(url) → apply_url</code></td><td>Takes the job ID from the URL, so it works for any posting.</td></tr>
+      <tr><td><code>fields.yaml</code></td><td>Form label → profile field, dropdown choices, screening answers</td><td>Uses labels, not job-specific field IDs, and keeps no personal data.</td></tr>
+      <tr><td><code>driver.py</code> (shared)</td><td>Steps for the application system</td><td>Shared by every company on the same system.</td></tr>
+      <tr><td><code>tests.yaml</code></td><td>Sample URLs and expected results</td><td>Shows the filler works for more than one job post.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="muted" style="font-size:.9rem">The filler never contains my personal details or passwords. It reads them at run time from the local profile and keychain.</p>
+
+  <h2>3. What the sites actually run on (checked 13 Oct 2026)</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th></th><th>Capgemini</th><th>HCLTech</th></tr></thead>
+    <tbody>
+      <tr><td>URL I give</td><td><code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code></td><td><code>careers.hcltech.com/job/…/180703-en_US</code></td></tr>
+      <tr><td>Job data</td><td>The page is filled in by script from <code>cg-jobstream-api.azurewebsites.net/api/job-details/{id}</code>. The response includes <code>apply_job_url</code>.</td><td>Included in the page itself.</td></tr>
+      <tr><td>Where "Apply" goes</td><td><code>careers.capgemini.com/job/…/1266011501/</code>. This is a different ID from the one in my link.</td><td>Same site</td></tr>
+      <tr><td>Application system</td><td><strong>SAP SuccessFactors</strong></td><td><strong>SAP SuccessFactors</strong></td></tr>
+      <tr><td>Apply form</td><td><code>/talentcommunity/apply/{id}/?locale=en_GB</code></td><td><code>/talentcommunity/apply/{id}/?locale=en_US</code></td></tr>
+      <tr><td>Login</td><td colspan="2">Probably needed. Opening the apply page without a session sent me back to the homepage. Not confirmed yet.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>How the URLs group</h3>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">RESOLVER: CAPGEMINI</span>
+      <h3>Same code for all of these</h3>
+      <ul>
+        <li><code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code></li>
+        <li><code>capgemini.com/in-en/jobs/355474-en_GB+sap_btp</code></li>
+        <li><code>capgemini.com/in-en/jobs/220549-en_GB+sap_btp</code></li>
+      </ul>
+      <p class="muted" style="font-size:.85rem;margin-bottom:0">Read the part after <code>/jobs/</code>, call the job API, and take <code>apply_job_url</code>.</p>
+    </div>
+    <div class="group alt">
+      <span class="tag">RESOLVER: HCLTECH</span>
+      <h3>Different resolver</h3>
+      <ul>
+        <li><code>careers.hcltech.com/job/Engineer-(Support-&amp;-Operations)/180703-en_US</code></li>
+      </ul>
+      <p class="muted" style="font-size:.85rem;margin-bottom:0">The link already goes to the apply site, so the resolver only builds the apply URL from it.</p>
+    </div>
+  </div>
+  <div class="group ats">
+    <span class="tag">DRIVER: SUCCESSFACTORS (shared)</span>
+    <p style="margin:10px 0 0;font-size:.9rem">Both resolvers hand off to the same SuccessFactors driver. Capgemini and HCLTech differ only in a settings file: site address, language code, login details, and any extra questions they add.</p>
+  </div>
+  <p class="muted" style="font-size:.9rem">Note: URLs copied out of HTML pages may contain encoded characters, such as <code>&amp;amp;</code> for <code>&amp;</code>. The agent decodes them before matching.</p>
+
+  <h2>4. How it's built</h2>
+<pre>
+job URL
+   │
+   ▼
+Open in browser (no existing-code check for now)
+   │
+   ▼
+Code-gen loop (Qwen) ── writes ──▶ Resolver (one per company)  ──▶ real apply URL
+   │                                    │
+   │                                    ▼
+   │                         System check (SuccessFactors? Workday? …)
+   │                                    │   detected from fixed markers, not by the LLM
+   │                                    ▼
+   └── writes ──────────────▶ Driver (one per system) + settings (one per company)
+                                        │
+                                        ▼
+                        Shared core: browser · profile · label matching ·
+                        resume upload · screening answers · review report · SUBMIT
+</pre>
+  <ul>
+    <li><strong>Shared core (written by hand, not by the LLM):</strong> browser control, the candidate profile, matching fields by their label text, file upload, the review report, and the <em>only</em> code that can press submit.</li>
+    <li><strong>Driver per system:</strong> SuccessFactors first. It handles login, the steps of the apply form, and moving between pages.</li>
+    <li><strong>Resolver and settings per company:</strong> small, and the easiest part for Qwen to write correctly.</li>
+    <li><strong>System check:</strong> plain rules that look for known markers (<code>rmkcdn.successfactors.com</code>, <code>/talentcommunity/apply/</code>, <code>myworkdayjobs.com</code>, …). A known system never triggers a new driver.</li>
+  </ul>
+
+  <h2>5. The LLM: Qwen3-Coder-30B (local)</h2>
+  <h3>What it does</h3>
+  <ul>
+    <li><strong>When setting up a new site:</strong> writes the missing resolver, settings file or driver, and fixes them until their tests pass.</li>
+    <li><strong>When filling a form:</strong> only drafts answers to screening questions the profile can't answer, as structured output that is marked for my review. Deterministic code does the actual filling, not the LLM.</li>
+  </ul>
+  <h3>Making a 30B local model reliable</h3>
+  <ul>
+    <li><strong>Small, fixed targets.</strong> Qwen writes code against a fixed interface (<code>resolve(url) → apply_url</code>, <code>Driver.fill(page, profile)</code>), not a whole scraper. Settings use a JSON/YAML schema it has to follow.</li>
+    <li><strong>Settings before code.</strong> If a company is on a known system, Qwen only writes a settings file. It writes a resolver only if one is missing, and a driver only for a system nobody has covered yet.</li>
+    <li><strong>Worked example in every prompt.</strong> Include an existing working resolver or driver (the Capgemini one once it's done) as the pattern to copy.</li>
+    <li><strong>Trimmed page content.</strong> Give it the form's fields, labels and buttons (the accessibility tree) and the network calls the page made, not the full raw HTML. That keeps the prompt within what the local machine can handle.</li>
+    <li><strong>Test-and-fix loop.</strong> Generate → run a test fill (fills fields, never submits) on 2–3 sample URLs → send errors and a screenshot description back to Qwen → repeat up to N times. Passing on all samples is the proof of "same code for the same company".</li>
+    <li><strong>Low temperature</strong> for code. Use an OpenAI-compatible local server (vLLM, llama.cpp or Ollama) so the model can be swapped later without changing the agent.</li>
+    <li><strong>Guardrails on generated code.</strong> It runs in a sandbox with a list of allowed imports. It can't submit forms, read credentials directly, or make network calls outside the target site. I review it before it goes into the registry.</li>
+  </ul>
+
+  <h2>6. How a run goes</h2>
+  <ol class="steps">
+    <li>Decode the URL, open it in the browser, and start the code-gen loop straight away to build the filler. (No check for existing code for now.)</li>
+    <li>The resolver produces the real apply URL (Capgemini: through the job API).</li>
+    <li>Detect the application system and load its driver plus the company's settings.</li>
+    <li>Open the browser with the saved login for that site and go to the apply form.</li>
+    <li>Fill fields from the profile. Use saved answers from earlier runs on that site, and ask Qwen only about questions it can't answer.</li>
+    <li><strong>Pause before the final submit</strong> and show the report: filled fields, empty fields, and AI-drafted answers.</li>
+    <li>Submit only after I confirm.</li>
+  </ol>
+
+  <h2>7. Candidate profile and logins</h2>
+  <p>My details live in <strong>one local profile file</strong> plus my resume. Logins for each site are stored in <code>.env</code> or the OS keychain, and each site keeps its own saved browser profile so I only log in by hand once. None of this goes into generated code, prompts sent outside the machine, logs or reports.</p>
+
+  <h2>8. Adding a new company later</h2>
+  <ol class="steps">
+    <li>Paste a URL. The agent opens it and starts building. (Later, the reuse lookup will skip this when a saved filler already matches.)</li>
+    <li>If it's a new company on a known system, Qwen writes a resolver and a settings file.</li>
+    <li>If it's a new system, Qwen writes a driver as well, starting from the SuccessFactors driver as the example.</li>
+    <li>Every new piece has to pass a test fill on 2–3 postings, and I review it before it's saved.</li>
+  </ol>
+
+  <h2>9. Out of scope (for now)</h2>
+  <ul>
+    <li>Searching for jobs or deciding which jobs to apply to.</li>
+    <li>Checking whether code for a site already exists before building. This reuse lookup will be designed later.</li>
+    <li>Getting around CAPTCHAs or bot protection. The agent stops and hands control to me.</li>
+    <li>Submitting without my review.</li>
+    <li>Letting the LLM drive the browser freely, click by click. It writes code inside the framework and doesn't operate the browser itself.</li>
+  </ul>
+
+  <h2>10. Still to decide</h2>
+  <ul>
+    <li>Confirm that both sites need a candidate account, and create one for each.</li>
+    <li>What hardware and which quantization will serve Qwen3-Coder-30B, and which local server (vLLM, llama.cpp or Ollama)?</li>
+    <li>Free-text screening questions: leave them blank, or let Qwen draft answers for my review?</li>
+    <li>Does every generated piece need my manual review, or is passing the tests enough for settings-only changes?</li>
+  </ul>
+</div>
+
+<div data-lang-block="hinglish" lang="hi-Latn">
+  <p class="meta">Intent document · v3 · 13 Oct 2026</p>
+  <h1>Job Form Agent</h1>
+  <p class="lede">Ek aisa agent jo <strong>form fillers banata hai</strong>. Job posting ka URL do, aur ye us company ke application form ke liye ek automated filler banata hai, use test karta hai, aur ek fixed, reusable format mein save kar deta hai. Same company ya same application system ka agla job post aaye, toh naya filler banane ki jagah wahi saved filler use hota hai. Ye sab ek local LLM, <strong>Qwen3-Coder-30B</strong>, banata hai.</p>
+
+  <div class="callout">
+    <strong>Main rule:</strong> ek baar banao, har job post ke liye reuse karo. Filler ek <em>company ya application system</em> ke liye banta hai, kabhi ek job ID ke liye nahi.
+    Abhi ke liye, naya URL aane par agent use browser mein kholta hai aur seedha filler banana shuru kar deta hai. Koi saved filler pehle se URL cover karta hai ya nahi, yeh check baad ka step hai (section 9 dekho).
+  </div>
+
+  <h2>1. Mujhe kya chahiye</h2>
+  <p>Iske do parts hain:</p>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">PART A: BUILDER AGENT</span>
+      <h3>Fillers banata hai</h3>
+      <ul>
+        <li>Job URL leta hai.</li>
+        <li>Job link browser mein kholta hai aur turant banana shuru kar deta hai. Abhi existing code check nahi karta.</li>
+        <li>Site ko dekhta hai (links, application system, form fields, network calls) aur Qwen se standard format mein filler likhwata hai.</li>
+        <li>Naye filler ko same company ke 2–3 job posts par test karta hai, aur pass hone tak fix karta rehta hai.</li>
+        <li>Registry mein save kar deta hai, taaki baad wale reuse step ko kuch milne ke liye ho.</li>
+      </ul>
+    </div>
+    <div class="group alt">
+      <span class="tag">PART B: FORM FILLER (generated)</span>
+      <h3>Forms bharta hai, har job post par reuse hota hai</h3>
+      <ul>
+        <li>Standard format mein ek saved package (section 2 dekho).</li>
+        <li>Uske URL patterns se match karne wale <em>kisi bhi</em> job post par chalta hai. Sirf job ID badalti hai.</li>
+        <li>Mere profile se fields bharta hai, resume upload karta hai, aur multi-step forms handle karta hai.</li>
+        <li>Final submit se pehle ruk jaata hai taaki main review kar sakoon.</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Example:</strong> builder <code>capgemini.com/…/jobs/196626-en_GB+sap_btp</code> se ek filler banata hai. Phir <code>355474</code> aur <code>220549</code> bina naye code ke usi filler par chalte hain. <code>careers.hcltech.com/…/180703-en_US</code> ka apna alag filler banta hai, lekin HCLTech bhi SuccessFactors par chalta hai, isliye wo filler same SuccessFactors steps reuse karta hai aur use sirf apni settings chahiye.</p>
+
+  <h2>2. Reusable filler format</h2>
+  <p>Builder jo bhi filler banata hai, sabka layout same hota hai. Isliye har filler ko ek hi tareeke se load, run, test aur reuse kiya ja sakta hai:</p>
+<pre>
+fillers/
+  successfactors/            ← is application system ke shared steps (driver)
+    driver.py                   login, apply wizard, page navigation, upload
+  capgemini/                 ← har company ka ek folder
+    manifest.yaml               naam, URL patterns, application system, version, status
+    resolver.py                 job URL → asli apply URL (capgemini: job API se)
+    fields.yaml                 form label → profile field, aur known questions ke saved answers
+    tests.yaml                  2–3 sample job URLs jin par filler ko pass hona hai
+  hcltech/
+    manifest.yaml
+    resolver.py
+    fields.yaml
+    tests.yaml
+</pre>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>File</th><th>Isme kya hai</th><th>Isse filler reusable kyun banta hai</th></tr></thead>
+    <tbody>
+      <tr><td><code>manifest.yaml</code></td><td>URL patterns (jaise <code>capgemini.com/*/jobs/*</code>), application system, version, status</td><td>Patterns us company ke har job post se match karte hain, sirf ek job ID se nahi.</td></tr>
+      <tr><td><code>resolver.py</code></td><td>Ek function: <code>resolve(url) → apply_url</code></td><td>Job ID URL se nikalta hai, isliye kisi bhi posting par kaam karta hai.</td></tr>
+      <tr><td><code>fields.yaml</code></td><td>Form label → profile field, dropdown choices, screening answers</td><td>Labels use karta hai, job-specific field IDs nahi, aur isme koi personal data nahi hota.</td></tr>
+      <tr><td><code>driver.py</code> (shared)</td><td>Application system ke steps</td><td>Same system wali har company ise share karti hai.</td></tr>
+      <tr><td><code>tests.yaml</code></td><td>Sample URLs aur expected results</td><td>Dikhata hai ki filler ek se zyada job posts par kaam karta hai.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="muted" style="font-size:.9rem">Filler mein kabhi meri personal details ya passwords nahi hote. Run time par wo unhe local profile aur keychain se padhta hai.</p>
+
+  <h2>3. Sites asal mein kis par chalti hain (13 Oct 2026 ko check kiya)</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th></th><th>Capgemini</th><th>HCLTech</th></tr></thead>
+    <tbody>
+      <tr><td>Jo URL main deta hoon</td><td><code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code></td><td><code>careers.hcltech.com/job/…/180703-en_US</code></td></tr>
+      <tr><td>Job data</td><td>Page script se bharta hai, <code>cg-jobstream-api.azurewebsites.net/api/job-details/{id}</code> se. Response mein <code>apply_job_url</code> hota hai.</td><td>Page mein hi hota hai.</td></tr>
+      <tr><td>"Apply" kahan jaata hai</td><td><code>careers.capgemini.com/job/…/1266011501/</code>. Ye mere link wali ID se alag ID hai.</td><td>Same site</td></tr>
+      <tr><td>Application system</td><td><strong>SAP SuccessFactors</strong></td><td><strong>SAP SuccessFactors</strong></td></tr>
+      <tr><td>Apply form</td><td><code>/talentcommunity/apply/{id}/?locale=en_GB</code></td><td><code>/talentcommunity/apply/{id}/?locale=en_US</code></td></tr>
+      <tr><td>Login</td><td colspan="2">Shayad chahiye. Bina session ke apply page kholne par homepage par wapas bhej diya. Abhi confirm nahi hua.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>URLs kaise group hote hain</h3>
+  <div class="groups">
+    <div class="group">
+      <span class="tag">RESOLVER: CAPGEMINI</span>
+      <h3>In sab ke liye same code</h3>
+      <ul>
+        <li><code>capgemini.com/in-en/jobs/196626-en_GB+sap_btp</code></li>
+        <li><code>capgemini.com/in-en/jobs/355474-en_GB+sap_btp</code></li>
+        <li><code>capgemini.com/in-en/jobs/220549-en_GB+sap_btp</code></li>
+      </ul>
+      <p class="muted" style="font-size:.85rem;margin-bottom:0"><code>/jobs/</code> ke baad wala part padho, job API call karo, aur <code>apply_job_url</code> le lo.</p>
+    </div>
+    <div class="group alt">
+      <span class="tag">RESOLVER: HCLTECH</span>
+      <h3>Alag resolver</h3>
+      <ul>
+        <li><code>careers.hcltech.com/job/Engineer-(Support-&amp;-Operations)/180703-en_US</code></li>
+      </ul>
+      <p class="muted" style="font-size:.85rem;margin-bottom:0">Link already apply site par jaata hai, isliye resolver bas usse apply URL bana deta hai.</p>
+    </div>
+  </div>
+  <div class="group ats">
+    <span class="tag">DRIVER: SUCCESSFACTORS (shared)</span>
+    <p style="margin:10px 0 0;font-size:.9rem">Dono resolvers same SuccessFactors driver ko hand off karte hain. Capgemini aur HCLTech mein farak sirf ek settings file ka hai: site address, language code, login details, aur unke koi extra questions.</p>
+  </div>
+  <p class="muted" style="font-size:.9rem">Note: HTML pages se copy kiye URLs mein encoded characters ho sakte hain, jaise <code>&amp;</code> ki jagah <code>&amp;amp;</code>. Match karne se pehle agent unhe decode karta hai.</p>
+
+  <h2>4. Ye kaise bana hai</h2>
+<pre>
+job URL
+   │
+   ▼
+Browser mein kholo (abhi existing code ka check nahi)
+   │
+   ▼
+Code-gen loop (Qwen) ── likhta hai ──▶ Resolver (har company ka ek)  ──▶ asli apply URL
+   │                                    │
+   │                                    ▼
+   │                         System check (SuccessFactors? Workday? …)
+   │                                    │   fixed markers se pata chalta hai, LLM se nahi
+   │                                    ▼
+   └── likhta hai ──────────▶ Driver (har system ka ek) + settings (har company ki ek)
+                                        │
+                                        ▼
+                        Shared core: browser · profile · label matching ·
+                        resume upload · screening answers · review report · SUBMIT
+</pre>
+  <ul>
+    <li><strong>Shared core (haath se likha hua, LLM se nahi):</strong> browser control, candidate profile, label text se fields match karna, file upload, review report, aur submit dabane wala <em>ekmatra</em> code.</li>
+    <li><strong>Har system ka ek driver:</strong> pehle SuccessFactors. Ye login, apply form ke steps, aur pages ke beech navigation handle karta hai.</li>
+    <li><strong>Har company ka resolver aur settings:</strong> chhote hote hain, aur Qwen ke liye sahi likhna sabse aasaan part hai.</li>
+    <li><strong>System check:</strong> simple rules jo known markers dhoondhte hain (<code>rmkcdn.successfactors.com</code>, <code>/talentcommunity/apply/</code>, <code>myworkdayjobs.com</code>, …). Known system par kabhi naya driver nahi banta.</li>
+  </ul>
+
+  <h2>5. LLM: Qwen3-Coder-30B (local)</h2>
+  <h3>Ye kya karta hai</h3>
+  <ul>
+    <li><strong>Nayi site setup karte waqt:</strong> missing resolver, settings file ya driver likhta hai, aur tests pass hone tak unhe fix karta hai.</li>
+    <li><strong>Form bharte waqt:</strong> sirf un screening questions ke answers draft karta hai jo profile se nahi bhar sakte, structured output mein, aur wo mere review ke liye mark hote hain. Asli filling deterministic code karta hai, LLM nahi.</li>
+  </ul>
+  <h3>30B local model ko reliable kaise banayein</h3>
+  <ul>
+    <li><strong>Chhote, fixed targets.</strong> Qwen ek fixed interface (<code>resolve(url) → apply_url</code>, <code>Driver.fill(page, profile)</code>) ke against code likhta hai, poora scraper nahi. Settings ek JSON/YAML schema follow karti hain jo use maanna padta hai.</li>
+    <li><strong>Code se pehle settings.</strong> Agar company kisi known system par hai, toh Qwen sirf settings file likhta hai. Resolver tabhi likhta hai jab wo missing ho, aur driver sirf us system ke liye jo abhi tak kisi ne cover nahi kiya.</li>
+    <li><strong>Har prompt mein ek worked example.</strong> Ek existing, chalta hua resolver ya driver (Capgemini wala, ban jaane ke baad) copy karne ke pattern ki tarah do.</li>
+    <li><strong>Trimmed page content.</strong> Use form ke fields, labels aur buttons (accessibility tree) aur page ke network calls do, poora raw HTML nahi. Isse prompt utna hi rehta hai jitna local machine handle kar sake.</li>
+    <li><strong>Test-and-fix loop.</strong> Generate → 2–3 sample URLs par test fill chalao (fields bharta hai, kabhi submit nahi karta) → errors aur screenshot ka description Qwen ko wapas bhejo → N baar tak repeat karo. Saare samples par pass hona hi "same company ke liye same code" ka proof hai.</li>
+    <li>Code ke liye <strong>low temperature</strong>. OpenAI-compatible local server (vLLM, llama.cpp ya Ollama) use karo, taaki baad mein agent badle bina model swap ho sake.</li>
+    <li><strong>Generated code par guardrails.</strong> Ye sandbox mein allowed imports ki list ke saath chalta hai. Ye forms submit nahi kar sakta, credentials seedha nahi padh sakta, aur target site ke bahar network calls nahi kar sakta. Registry mein jaane se pehle main ise review karta hoon.</li>
+  </ul>
+
+  <h2>6. Ek run kaise chalta hai</h2>
+  <ol class="steps">
+    <li>URL decode karo, browser mein kholo, aur filler banane ke liye seedha code-gen loop shuru karo. (Abhi existing code ka check nahi.)</li>
+    <li>Resolver asli apply URL deta hai (Capgemini: job API ke through).</li>
+    <li>Application system detect karo aur uska driver plus company ki settings load karo.</li>
+    <li>Us site ke saved login ke saath browser kholo aur apply form par jao.</li>
+    <li>Profile se fields bharo. Us site ke pichhle runs ke saved answers use karo, aur Qwen se sirf wahi questions poocho jo wo khud answer nahi kar sakta.</li>
+    <li><strong>Final submit se pehle ruko</strong> aur report dikhao: bhare hue fields, khaali fields, aur AI-drafted answers.</li>
+    <li>Mere confirm karne ke baad hi submit karo.</li>
+  </ol>
+
+  <h2>7. Candidate profile aur logins</h2>
+  <p>Meri details <strong>ek local profile file</strong> aur mere resume mein rehti hain. Har site ke logins <code>.env</code> ya OS keychain mein store hote hain, aur har site ka apna saved browser profile hota hai, taaki mujhe sirf ek baar haath se login karna pade. Inme se kuch bhi generated code, machine ke bahar jaane wale prompts, logs ya reports mein nahi jaata.</p>
+
+  <h2>8. Baad mein nayi company add karna</h2>
+  <ol class="steps">
+    <li>URL paste karo. Agent use kholta hai aur banana shuru karta hai. (Baad mein, saved filler match hone par reuse lookup yeh step skip karega.)</li>
+    <li>Agar ye known system par nayi company hai, toh Qwen ek resolver aur settings file likhta hai.</li>
+    <li>Agar ye naya system hai, toh Qwen ek driver bhi likhta hai, SuccessFactors driver ko example maan kar.</li>
+    <li>Har naye piece ko 2–3 postings par test fill pass karna padta hai, aur save hone se pehle main use review karta hoon.</li>
+  </ol>
+
+  <h2>9. Abhi scope ke bahar</h2>
+  <ul>
+    <li>Jobs dhoondhna ya decide karna ki kahan apply karna hai.</li>
+    <li>Banane se pehle check karna ki site ka code pehle se hai ya nahi. Yeh reuse lookup baad mein design hoga.</li>
+    <li>CAPTCHAs ya bot protection ko bypass karna. Agent ruk jaata hai aur control mujhe de deta hai.</li>
+    <li>Mere review ke bina submit karna.</li>
+    <li>LLM ko browser freely, click-by-click chalane dena. Ye framework ke andar code likhta hai, browser khud nahi chalata.</li>
+  </ul>
+
+  <h2>10. Abhi decide karna baaki hai</h2>
+  <ul>
+    <li>Confirm karna ki dono sites par candidate account chahiye, aur dono par ek-ek banana.</li>
+    <li>Qwen3-Coder-30B kis hardware aur kis quantization par chalega, aur kaunsa local server (vLLM, llama.cpp ya Ollama)?</li>
+    <li>Free-text screening questions: khaali chhod dein, ya Qwen mere review ke liye answers draft kare?</li>
+    <li>Kya har generated piece ko mera manual review chahiye, ya settings-only changes ke liye tests pass hona kaafi hai?</li>
+  </ul>
+</div>
+
+</main>
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll('[data-set-lang]');
+  function setLang(lang) {
+    root.setAttribute('data-lang', lang);
+    root.setAttribute('lang', lang === 'hinglish' ? 'hi-Latn' : 'en');
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.setLang === lang)); });
+    try { localStorage.setItem('jfa-lang', lang); } catch (e) {}
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { setLang(b.dataset.setLang); }); });
+  var saved = null;
+  try { saved = localStorage.getItem('jfa-lang'); } catch (e) {}
+  if (saved === 'en' || saved === 'hinglish') setLang(saved);
+})();
+</script>
+</body>
+</html>

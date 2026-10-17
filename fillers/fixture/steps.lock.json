@@ -1,0 +1,42 @@
+{
+  "step_01_click_apply": {
+    "sha1": "7b441750856bd06bbd243708424367f593afbba2",
+    "status": "locked"
+  },
+  "step_02_name": {
+    "sha1": "c7125ebb44b8667b15278f6ad3bb97ecf0fc5c41",
+    "status": "locked"
+  },
+  "step_03_email": {
+    "sha1": "6d21a23772bcb9c6052ef745b457d5db80faf38e",
+    "status": "locked"
+  },
+  "step_04_phone": {
+    "sha1": "cc47ac6cb5740f8dd763c9e65577015a59272631",
+    "status": "locked"
+  },
+  "step_05_resume": {
+    "sha1": "281e2b0bcb7e799847e00e7c94cda6063d583474",
+    "status": "locked"
+  },
+  "step_06_next": {
+    "sha1": "cf4758514730036003fbf65215b4972b282a5625",
+    "status": "locked"
+  },
+  "step_07_country": {
+    "sha1": "a177e54e117e5fef16460ce82bc206ea30ae31c1",
+    "status": "locked"
+  },
+  "step_08_city": {
+    "sha1": "0afe8198bca273e9eb8a987b6ac6b154029b4fe3",
+    "status": "locked"
+  },
+  "step_09_relocate": {
+    "sha1": "ae53dda6f3f7842f39ea9ebf10782f4862f837fb",
+    "status": "locked"
+  },
+  "step_10_next": {
+    "sha1": "876705712b4efa7bbe7160357c568ad632b284b0",
+    "status": "locked"
+  }
+}

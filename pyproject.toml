@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "job-form-agent"
+version = "0.1.0"
+description = "Builder agent that writes, tests and saves reusable job-application form fillers with a local LLM."
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.49",
+    "pyyaml>=6.0",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "openai>=1.40",
+    "ruff>=0.5",
+    "pytest>=8.0",
+    "pytest-xdist>=3.5",
+    "jinja2>=3.1",
+    "reportlab>=4.0",
+    "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+packages = ["agent", "agent.prompts", "core"]
+
+[tool.setuptools.package-data]
+"agent.prompts" = ["*.md", "*.j2", "*.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["my-docs", ".claude", "runs", "browser_profiles", "fillers"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["safety: safety-critical tests run first"]
+addopts = "-p no:cacheprovider"

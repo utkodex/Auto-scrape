@@ -1,0 +1,13 @@
+company: fixture
+application_system: unknown
+url_patterns:
+- 127.0.0.1/*
+allowed_hosts:
+- 127.0.0.1
+locale: ''
+version: 1
+status: draft
+built_with:
+  model: qwen3-coder:30b
+  harness: 0.1.0
+  run: runs/fixture/2026-10-15T12-22-55

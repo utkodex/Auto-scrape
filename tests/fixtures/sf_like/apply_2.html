@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Apply - Step 2 of 2</title>
+  <script src="common.js"></script>
+  <script>SF.requireLogin();</script>
+  <style>
+    body{font-family:sans-serif;max-width:720px;margin:2rem auto}
+    .row{margin:.6rem 0} label{display:block;font-weight:600}
+    fieldset label{display:inline;font-weight:400;margin-right:1rem}
+    input,select,textarea{width:60%;padding:.3rem} input[type=radio],input[type=checkbox]{width:auto}
+    #error{color:#b00020}
+  </style>
+</head>
+<body>
+  <h1>Additional Information</h1>
+  <form id="f" novalidate>
+    <div class="row">
+      <label for="country">Country *</label>
+      <select id="country" name="country" required>
+        <option value="">Select</option>
+        <option>India</option>
+        <option>Indonesia</option>
+        <option>United Kingdom</option>
+        <option>United States</option>
+      </select>
+    </div>
+    <div class="row"><label for="city">City *</label><input id="city" name="city" type="text" required></div>
+    <div class="row">
+      <fieldset>
+        <legend>Willing to relocate *</legend>
+        <label><input type="radio" name="relocate" value="Yes" required> Yes</label>
+        <label><input type="radio" name="relocate" value="No" required> No</label>
+      </fieldset>
+    </div>
+    <div class="row">
+      <input id="auth" name="auth" type="checkbox">
+      <label for="auth" style="display:inline">Work authorization in India</label>
+    </div>
+    <div class="row"><label for="notice">Notice period (days)</label><input id="notice" name="notice" type="text" placeholder="DD"></div>
+    <div class="row"><label for="why">Why do you want to join?</label><textarea id="why" name="why" rows="3"></textarea></div>
+    <p id="error" hidden></p>
+    <div class="row"><button type="button" id="next">Next</button></div>
+  </form>
+  <script>
+    document.getElementById("next").addEventListener("click", () => {
+      if (!SF.validate(document.getElementById("f"))) return;
+      SF.go("review.html");
+    });
+  </script>
+</body>
+</html>

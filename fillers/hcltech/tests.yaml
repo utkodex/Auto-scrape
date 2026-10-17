@@ -1,0 +1,8 @@
+# Sample postings the HCLTech filler must pass. 180703 (intent doc) was closed on 2026-10-15:
+# its Apply now lands on "You cannot view this job because it is not available at this time".
+# Replace these with fresh postings from https://careers.hcltech.com/search/ when they close.
+samples:
+  - url: https://careers.hcltech.com/job/Hunter/71971-en_US
+    expect: {reaches: review, resume_attached: true}
+  - url: https://careers.hcltech.com/job/Hunter/71972-en_US
+    expect: {reaches: review, resume_attached: true}

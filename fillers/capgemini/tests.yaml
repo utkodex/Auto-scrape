@@ -1,0 +1,8 @@
+# Sample postings the Capgemini filler must pass (all three from the intent doc).
+samples:
+  - url: https://www.capgemini.com/in-en/jobs/196626-en_GB+sap_btp
+    expect: {reaches: review, resume_attached: true}
+  - url: https://www.capgemini.com/in-en/jobs/355474-en_GB+sap_btp
+    expect: {reaches: review, resume_attached: true}
+  - url: https://www.capgemini.com/in-en/jobs/220549-en_GB+sap_btp
+    expect: {reaches: review, resume_attached: true}

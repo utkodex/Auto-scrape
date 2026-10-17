@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+runs/
+browser_profiles/
+.env
+profiles/real*
+profiles/*resume*.pdf
+!profiles/dummy_resume.pdf
+.pytest_cache/
+.ruff_cache/
+my-docs/*.pdf
+
+profiles

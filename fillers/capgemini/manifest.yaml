@@ -1,0 +1,24 @@
+company: capgemini
+application_system: successfactors
+url_patterns:
+- capgemini.com/*/jobs/*
+- www.capgemini.com/*/jobs/*
+- careers.capgemini.com/job/*
+- careers.capgemini.com/talentcommunity/apply/*
+allowed_hosts:
+- capgemini.com
+- www.capgemini.com
+- careers.capgemini.com
+- cg-jobstream-api.azurewebsites.net
+- '*.successfactors.com'
+- '*.successfactors.eu'
+- rmkcdn.successfactors.com
+- '*.sapsf.eu'
+- '*.sapsf.com'
+locale: en_GB
+version: 1
+status: draft
+built_with:
+  model: qwen3-coder-30b
+  harness: 0.1.0
+  run: ''

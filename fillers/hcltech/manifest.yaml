@@ -1,0 +1,19 @@
+company: hcltech
+application_system: successfactors
+url_patterns:
+- careers.hcltech.com/job/*
+- careers.hcltech.com/talentcommunity/apply/*
+allowed_hosts:
+- careers.hcltech.com
+- '*.successfactors.com'
+- '*.successfactors.eu'
+- rmkcdn.successfactors.com
+- '*.sapsf.eu'
+- '*.sapsf.com'
+locale: en_US
+version: 1
+status: draft
+built_with:
+  model: qwen3-coder:30b
+  harness: 0.1.0
+  run: runs/hcltech/2026-10-15T12-53-40

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Apply - Step 1 of 2</title>
+  <script src="common.js"></script>
+  <script>SF.requireLogin();</script>
+  <style>
+    body{font-family:sans-serif;max-width:720px;margin:2rem auto}
+    .row{margin:.6rem 0} label{display:block;font-weight:600}
+    input,select,textarea{width:60%;padding:.3rem}
+    .combo{position:relative;width:60%}
+    .combo ul{list-style:none;margin:0;padding:0;border:1px solid #999;position:absolute;background:#fff;width:100%;z-index:2}
+    .combo li{padding:.3rem;cursor:pointer} .combo li:hover{background:#eee}
+    #error{color:#b00020}
+  </style>
+</head>
+<body>
+  <h1>Personal Information</h1>
+  <form id="f" novalidate>
+    <div class="row"><label for="first">First Name *</label><input id="first" name="first" type="text" required></div>
+    <div class="row"><label for="last">Last Name *</label><input id="last" name="last" type="text" required></div>
+    <div class="row"><label for="email">Email *</label><input id="email" name="email" type="email" required></div>
+    <div class="row">
+      <label for="cc">Country Code *</label>
+      <div class="combo">
+        <input id="cc" name="cc" type="text" role="combobox" aria-expanded="false" aria-controls="cc-list"
+               aria-autocomplete="list" autocomplete="off" required placeholder="Select">
+        <ul id="cc-list" role="listbox" hidden>
+          <li role="option">India (+91)</li>
+          <li role="option">Indonesia (+62)</li>
+          <li role="option">United Kingdom (+44)</li>
+          <li role="option">United States (+1)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="row"><label for="phone">Phone Number *</label><input id="phone" name="phone" type="tel" required></div>
+    <div class="row">
+      <label for="resume">Resume *</label>
+      <input id="resume" name="resume" type="file" required>
+      <span id="resume-name" aria-live="polite"></span>
+    </div>
+    <div id="many"></div>
+    <p id="error" hidden></p>
+    <div class="row"><button type="button" id="next">Next</button> <button type="button" id="save">Save</button></div>
+  </form>
+  <script>
+    const cc = document.getElementById("cc"), list = document.getElementById("cc-list");
+    const options = [...list.querySelectorAll("li")];
+    function openList() { list.hidden = false; cc.setAttribute("aria-expanded", "true"); }
+    function closeList() { list.hidden = true; cc.setAttribute("aria-expanded", "false"); }
+    function filter() {
+      const v = cc.value.toLowerCase();
+      options.forEach(o => { o.hidden = v && !o.textContent.toLowerCase().includes(v); });
+    }
+    cc.addEventListener("focus", () => { openList(); filter(); });
+    cc.addEventListener("click", () => { openList(); filter(); });
+    cc.addEventListener("input", () => { openList(); filter(); cc.dataset.selected = ""; });
+    options.forEach(o => o.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      cc.value = o.textContent; cc.dataset.selected = o.textContent; closeList();
+    }));
+    document.addEventListener("click", (e) => { if (!e.target.closest(".combo")) closeList(); });
+
+    document.getElementById("resume").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      document.getElementById("resume-name").textContent = f ? f.name : "";
+    });
+
+    if (SF.flag("many")) {
+      const m = document.getElementById("many");
+      for (let i = 1; i <= 120; i++) {
+        const d = document.createElement("div"); d.className = "row";
+        d.innerHTML = '<label for="extra' + i + '">Extra Field ' + i + '</label><input id="extra' + i + '" type="text">';
+        m.appendChild(d);
+      }
+    }
+
+    document.getElementById("next").addEventListener("click", () => {
+      const form = document.getElementById("f");
+      if (!SF.validate(form)) return;
+      if (!cc.dataset.selected) {
+        const err = document.getElementById("error");
+        err.textContent = "Country Code must be chosen from the list"; err.hidden = false; return;
+      }
+      SF.go("apply_2.html");
+    });
+    document.getElementById("save").addEventListener("click", () => {
+      const err = document.getElementById("error"); err.textContent = "Saved."; err.hidden = false;
+    });
+  </script>
+</body>
+</html>
